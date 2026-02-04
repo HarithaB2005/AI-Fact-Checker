@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Fact Checker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <style>
+    /* (All your original CSS...) */
+    :root {
+      --color-bg: #f6f8fb;
+      --color-text: #243b60;
+      --color-primary: #4274f6;
+      --color-primary-gradient-start: #3e75f1;
+      --color-primary-gradient-mid: #34b6e5;
+      --color-primary-gradient-end: #b55fff;
+      --color-card-bg: #ffffff;
+      --color-card-shadow: #c0d9fa;
+      --color-card-shadow-hover: #4274f644;
+      --color-text-secondary: #51699c;
+      --color-text-placeholder: #7ea5efb9;
+      --color-textarea-bg: #eaf1fb;
+      --color-textarea-border: #34b6e544;
+      --color-textarea-focus-bg: #d4e4fc;
+      --color-button-shadow: #4274f644;
+      --color-button-shadow-hover: #b55fff44;
+      --color-result-bg-gradient-start: #eaf1fb;
+      --color-result-bg-gradient-end: #f8fafd;
+      --color-ocr-box-bg: #eaf1fb;
+      --color-ocr-box-border: #34b6e544;
+      --color-ocr-box-shadow: #34b6e520;
+      --color-show-img-bg: #f6f8fb;
+      --color-link: #4274f6;
+      --color-link-hover: #b55fff;
+      --color-status-true: #22c55e;
+      --color-status-false: #ef4444;
+      --color-status-partial: #eab308;
+      --color-status-unknown: #4274f6;
+    }
+    body.dark {
+      --color-bg: #121620;
+      --color-text: #d0d7e3;
+      --color-primary: #7ea5ef;
+      --color-primary-gradient-start: #6e85ff;
+      --color-primary-gradient-mid: #53c3ff;
+      --color-primary-gradient-end: #b688ff;
+      --color-card-bg: #1e2533;
+      --color-card-shadow: #0a1a40aa;
+      --color-card-shadow-hover: #5a63d866;
+      --color-text-secondary: #a0a8be;
+      --color-text-placeholder: #7e8cbcaa;
+      --color-textarea-bg: #283047;
+      --color-textarea-border: #5289ff88;
+      --color-textarea-focus-bg: #3a4a7b;
+      --color-button-shadow: #5a63d866;
+      --color-button-shadow-hover: #b688ff88;
+      --color-result-bg-gradient-start: #283047;
+      --color-result-bg-gradient-end: #1e2533;
+      --color-ocr-box-bg: #283047;
+      --color-ocr-box-border: #5289ff88;
+      --color-ocr-box-shadow: #5289ff44;
+      --color-show-img-bg: #1e2533;
+      --color-link: #7ea5ef;
+      --color-link-hover: #b688ff;
+      --color-status-true: #22c55e;
+      --color-status-false: #ef4444;
+      --color-status-partial: #eab308;
+      --color-status-unknown: #7ea5ef;
+    }
+    body {
+      margin: 0;
+      font-family: 'Inter', Arial, sans-serif;
+      background: var(--color-bg);
+      color: var(--color-text);
+      min-height: 100vh;
+      padding: 0;
+      box-sizing: border-box;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    h1 {
+      margin-top: 38px;
+      margin-bottom: 10px;
+      text-align: center;
+      font-size: 2.7rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      background: linear-gradient(90deg,var(--color-primary-gradient-start),var(--color-primary-gradient-mid),var(--color-primary-gradient-end));
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 1px 22px var(--color-primary-gradient-mid)44;
+      letter-spacing: 2px;
+      width: 100%;
+      transition: color 0.3s;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 48px auto 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 36px 32px;
+    }
+    .card {
+      background: var(--color-card-bg);
+      border-radius: 18px;
+      padding: 34px 28px 32px 28px;
+      box-shadow: 0 8px 38px var(--color-card-shadow);
+      transition: transform 0.24s, box-shadow 0.24s, background-color 0.3s;
+      display: flex;
+      flex-direction: column;
+    }
+    .card:hover {
+      transform: translateY(-5px) scale(1.01);
+      box-shadow: 0 18px 38px var(--color-card-shadow-hover);
+    }
+    h2 {
+      margin: 0 0 12px 0;
+      font-weight: 600;
+      color: var(--color-primary);
+      letter-spacing: 0.04em;
+      font-size: 1.38rem;
+      transition: color 0.3s;
+    }
+    p {
+      color: var(--color-text-secondary);
+      line-height: 1.55;
+      font-size: 1.02rem;
+      margin-bottom: 8px;
+      transition: color 0.3s;
+    }
+    textarea {
+      width: 94%;
+      min-height: 130px;
+      max-height: 100px;
+      padding: 10px 14px;
+      border-radius: 13px;
+      border: 1px solid var(--color-textarea-border);
+      outline: none;
+      background: var(--color-textarea-bg);
+      color: var(--color-text);
+      font-size: 1.20rem;
+      box-shadow: 0 1.5px 6px var(--color-primary-gradient-mid)22 inset;
+      font-family: 'Inter', Arial, sans-serif;
+      margin-bottom: 16px;
+      resize: vertical;
+      transition: background 0.2s, border 0.2s, color 0.3s;
+    }
+    textarea::placeholder {
+      color: var(--color-text-placeholder);
+      font-style: italic;
+      transition: color 0.3s;
+    }
+    textarea:focus {
+      background: var(--color-textarea-focus-bg);
+      border: 1px solid var(--color-primary);
+      box-shadow: 0 3px 16px var(--color-primary-gradient-mid)22 inset;
+      color: var(--color-text);
+    }
+    input[type="file"] {
+      width: 100%;
+      margin: 8px 0 18px 0;
+      background: var(--color-textarea-bg);
+      color: var(--color-text);
+      border-radius: 10px;
+      font-size: 1.01rem;
+      border:none;
+      padding: 10px 0 10px 0;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    button {
+      background: linear-gradient(90deg,var(--color-primary) 20%, var(--color-primary-gradient-end) 90%);
+      color: white;
+      border: none;
+      padding: 14px 0;
+      border-radius: 13px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 1.09rem;
+      letter-spacing: 0.03em;
+      width: 100%;
+      box-shadow: 0 6px 18px var(--color-button-shadow);
+      transition: background 0.28s, box-shadow 0.2s;
+      font-family: 'Inter', Arial, sans-serif;
+    }
+    button:hover {
+      background: linear-gradient(90deg,var(--color-primary-gradient-end) 10%, var(--color-primary) 100%);
+      box-shadow: 0 10px 32px var(--color-button-shadow-hover);
+    }
+    .show-img {
+      width: 98%;
+      max-width: 320px;
+      max-height: 170px;
+      border-radius: 13px;
+      margin-top: 5px;
+      box-shadow: 0 2px 14px #91cffa;
+      object-fit: contain;
+      background: var(--color-show-img-bg);
+      display: block;
+      transition: background-color 0.3s;
+    }
+    .ocr-box {
+      width: 93%;
+      background: var(--color-ocr-box-bg);
+      border: 1.5px solid var(--color-ocr-box-border);
+      border-radius: 13px;
+      padding: 14px 18px;
+      min-height: 54px;
+      font-size: 1.07rem;
+      color: var(--color-text);
+      margin-top: 7px;
+      font-family: 'Consolas', monospace;
+      box-shadow: 0 0 12px var(--color-ocr-box-shadow) inset;
+      white-space: pre-wrap;
+      line-height: 1.42;
+      word-break: break-word;
+      resize: vertical;
+      transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+    }
+    .result-card {
+      grid-column: span 2;
+      background: linear-gradient(90deg,var(--color-result-bg-gradient-start) 80%, var(--color-result-bg-gradient-end) 100%);
+      border-radius: 18px;
+      padding: 26px 36px 26px 36px;
+      margin-top: 22px;
+      box-shadow: 0 2.5px 32px var(--color-card-shadow), 0 0 1px var(--color-result-bg-gradient-start);
+      color: var(--color-text);
+      transition: background 0.3s, color 0.3s;
+    }
+    #fingerprint {
+      color: var(--color-text-secondary);
+      font-weight: 600;
+      font-size: 0.98rem;
+      margin-bottom: 16px;
+      font-family: 'Consolas',monospace;
+      word-break: break-all;
+      transition: color 0.3s;
+    }
+    .status-true { color: var(--color-status-true); font-weight: bold; text-shadow: 0 0 8px var(--color-status-true)60;}
+    .status-false { color: var(--color-status-false); font-weight: bold; text-shadow: 0 0 8px var(--color-status-false)bb;}
+    .status-partial { color: var(--color-status-partial); font-weight: bold; text-shadow: 0 0 8px #b8a608bb;}
+    .status-unknown { color: var(--color-status-unknown); font-weight: bold; text-shadow: 0 0 8px var(--color-primary-gradient-end)bb;}
+    .sources a {
+      color: var(--color-link);
+      text-decoration: underline;
+      transition: color 0.2s;
+    }
+    .sources a:hover {
+      color: var(--color-link-hover);
+    }
+    @media (max-width:950px) {
+      .container { grid-template-columns: 1fr; gap: 22px;}
+      .result-card { grid-column: span 1;}
+      .show-img { max-width: 99vw;}
+      h1 {text-align: center;margin-left:0;}
+    }
+    #themeToggleContainer {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 1000;
+      font-family: 'Inter', Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      user-select: none;
+    }
+    #themeToggleLabel {
+      display: none;
+    }
+    #themeToggle {
+      width: 50px;
+      height: 24px;
+      position: relative;
+      appearance: none;
+      background: var(--color-textarea-border);
+      outline: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      flex-shrink: 0;
+    }
+    #themeToggle:checked {
+      background: var(--color-primary-gradient-mid);
+    }
+    #themeToggle::before {
+      content: "☀";
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 2px 4px rgb(0 0 0 / 0.2);
+      transition: 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      line-height: 1;
+      color: #f39c12;
+      text-shadow: 0 0 3px #f39c12, 0 0 5px #f39c12;
+      z-index: 2;
+    }
+    #themeToggle:checked::before {
+      content: "🌙";
+      transform: translateX(26px);
+      background: white;
+      color: #6b7a8f;
+      text-shadow: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="themeToggleContainer">
+    <label for="themeToggle" id="themeToggleLabel">Toggle theme</label>
+    <input type="checkbox" id="themeToggle" aria-label="Toggle dark mode" />
+  </div>
+  <h1>F.A.C.T (Fact-Checking & Analysis Tool)</h1>
+  <div class="container">
+    <!-- Text Analysis -->
+    <div class="card">
+      <h2>Text Analysis</h2>
+      <p>Enter a claim or statement to verify.</p>
+      <textarea id="textInput" placeholder="Enter text here..."></textarea>
+      <button onclick="analyzeText()">Analyze Claim</button>
+    </div>
+    <!-- Image Analysis -->
+    <div class="card">
+      <h2>Image Analysis</h2>
+      <p>Upload an image with text for verification.</p>
+      <input type="file" id="imageInput" accept="image/*" onchange="handleImage(event)" />
+      <div id="imagePreview"></div>
+      <button onclick="analyzeImage()">Upload & Analyze</button>
+      <div class="ocr-box" id="ocrText">(Extracted text will appear here...)</div>
+    </div>
+    <!-- Result -->
+    <div class="result-card" id="resultCard">
+      <h2>Explainable Result</h2>
+      <p id="fingerprint">Fingerprint: —</p>
+      <div id="analysisResult">No analysis yet.</div>
+    </div>
+  </div>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const themeToggle = document.getElementById('themeToggle');
+      const preferredTheme = localStorage.getItem('theme');
+      const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      function applyTheme(theme) {
+        if (theme === 'dark') {
+          document.body.classList.add('dark');
+          themeToggle.checked = true;
+        } else {
+          document.body.classList.remove('dark');
+          themeToggle.checked = false;
+        }
+      }
+      if (preferredTheme) {
+        applyTheme(preferredTheme);
+      } else {
+        applyTheme(systemPrefersDark ? 'dark' : 'light');
+      }
+      themeToggle.addEventListener('change', () => {
+        if (themeToggle.checked) {
+          applyTheme('dark');
+          localStorage.setItem('theme', 'dark');
+        } else {
+          applyTheme('light');
+          localStorage.setItem('theme', 'light');
+        }
+      });
+    });
+
+    // Claim analysis logic:
+    async function analyzeText() {
+      const text = document.getElementById("textInput").value;
+      const resultDiv = document.getElementById("analysisResult");
+      const fingerprintDiv = document.getElementById("fingerprint");
+
+      if (!text.trim()) {
+        resultDiv.innerText = "Please enter a claim to analyze.";
+        return;
+      }
+      resultDiv.innerText = "Analyzing...";
+      fingerprintDiv.innerText = "Fingerprint: —";
+
+      try {
+        const response = await fetch('/api/analyze-text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ claim: text })
+        });
+        if (!response.ok) {
+          resultDiv.innerText = "Error analyzing claim.";
+          return;
+        }
+        const data = await response.json();
+        fingerprintDiv.innerText = `Fingerprint: ${data.fingerprint || "—"}`;
+        resultDiv.innerHTML = `
+          <div><b>Status:</b> <span class="status-${(data.status || "unknown").toLowerCase()}">${data.status || "Unknown"}</span></div>
+          <div><b>Trust Score:</b> ${data.trust_score || 0}</div>
+          <div><b>Reasoning:</b> ${data.reasoning || ""}</div>
+          <div><b>Sources:</b> ${data.sources && data.sources.length ? data.sources.map(src => src.url ? `<a href="${src.url}" target="_blank">${src.name}</a>` : src.name).join(", ") : "—"}</div>
+        `;
+      } catch (err) {
+        resultDiv.innerText = "Error analyzing claim.";
+      }
+    }
+
+    // Minimal stub for image-to-text (no backend, only OCR in browser)
+    async function handleImage(event) {
+      const file = event.target.files[0];
+      const previewDiv = document.getElementById("imagePreview");
+      const ocrBox = document.getElementById("ocrText");
+      previewDiv.innerHTML = "";
+      ocrBox.innerText = "(Extracted text will appear here...)";
+      if (file) {
+        const img = document.createElement("img");
+        img.src = URL.createObjectURL(file);
+        img.className = "show-img";
+        previewDiv.appendChild(img);
+        ocrBox.innerText = "Reading image...";
+        const { data: { text } } = await Tesseract.recognize(file, 'eng');
+        ocrBox.innerText = text.trim();
+      }
+    }
+
+    async function analyzeImage() {
+      // Optionally could send extracted text from OCR to analyzeText for backend check
+      const text = document.getElementById("ocrText").innerText;
+      if (text && text.trim() && text !== "(Extracted text will appear here...)" && text !== "Reading image...") {
+        document.getElementById("textInput").value = text.trim();
+        analyzeText();
+      }
+    }
+  </script>
+</body>
+</html>
